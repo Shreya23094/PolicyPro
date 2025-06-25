@@ -1,4 +1,4 @@
-# 📄 PolicyAnalyzer – AI-Powered Insurance Policy Understanding
+# 📄 PolicyPro – AI-Powered Insurance Policy Understanding
 
 > **"Revolutionize how people read and understand insurance policies using the power of Generative AI and LangChain."**
 
