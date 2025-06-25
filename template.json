@@ -1,0 +1,90 @@
+
+{
+  "summary": {
+    "policy_name": "string",
+    "policy_type": "string or null",
+    "policy_id": "string or null",
+    "effective_date": "YYYY-MM-DD or null",
+    "expiration_date": "YYYY-MM-DD or null",
+    "issuing_entity": "string or null",
+    "summary": "string",
+    "last_updated": "YYYY-MM-DD or null",
+    "source_url": "string or null",
+    "key_definitions": { "term1": "definition1", "term2": "definition2" },
+    "table_of_contents": ["section1", "section2"]
+  },
+  "coverages": [
+    {
+      "name": "string",
+      "description": "string",
+      "limits": "string or null",
+      "deductible": "string or null",
+      "conditions": "string or null",
+      "exclusions": "string or null"
+    }
+  ],
+  "eligibility": {
+    "section_name": "Eligibility",
+    "criteria": [
+      {
+        "criterion": "string",
+        "details": "string",
+        "is_required": true
+      }
+    ],
+    "notes": "string or null"
+  },
+  "claim_procedures": [
+    {
+      "procedure_name": "string",
+      "overview": "string or null",
+      "steps": [
+        {
+          "step_number": 1,
+          "description": "string",
+          "required_documents": ["doc1", "doc2"],
+          "contact_info": "string or null"
+        }
+      ],
+      "timeline": "string or null",
+      "support_contacts": { "support": "email/phone" },
+      "notes": "string or null"
+    }
+  ],
+  "obligations": {
+    "section_name": "Obligations and Responsibilities",
+    "obligations": [
+      {
+        "description": "string",
+        "consequence_of_non_compliance": "string or null"
+      }
+    ]
+  },
+  "terms_and_conditions": {
+    "section_name": "Terms and Conditions",
+    "clauses": [
+      {
+        "heading": "string or null",
+        "content": "string",
+        "keywords": ["term1", "term2"]
+      }
+    ]
+  },
+  "contact_information": {
+    "section_name": "Contact Information",
+    "contacts": [
+      {
+        "department": "string or null",
+        "phone": "string or null",
+        "email": "string or null",
+        "address": "string or null",
+        "website": "string or null",
+        "hours_of_operation": "string or null"
+      }
+    ]
+  },
+  "other_sections": {
+    "Changes to Terms": "description text",
+    "Miscellaneous": "description text"
+  }
+}
