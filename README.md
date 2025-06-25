@@ -14,13 +14,13 @@ In today's fast-moving world, **insurance policies are critical yet extremely ha
 - Miss out on *coverage details or claim procedures*,
 - Or simply *don’t know their rights and obligations*.
 
-**I created PolicyAnalyzer** to simplify this complexity using **AI**, making insurance documents **transparent, interactive, and user-friendly**. No more confusion, legal jargon, or missed clauses—just **clarity and confidence**.
+**I created PolicyPro** to simplify this complexity using **AI**, making insurance documents **transparent, interactive, and user-friendly**. No more confusion, legal jargon, or missed clauses—just **clarity and confidence**.
 
 ---
 
-## 🧠 What is PolicyAnalyzer?
+## 🧠 What is PolicyPro?
 
-PolicyAnalyzer is a **Streamlit-based web app** powered by:
+PolicyPro is a **Streamlit-based web app** powered by:
 - 🧠 **LangChain + Hugging Face (Gemma-2B-IT)** for natural language understanding,
 - 🛠️ **Pydantic Output Parsers** for structured extraction,
 - 📄 **PDF/Text File Upload** and analysis,
