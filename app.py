@@ -3,7 +3,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.output_parsers import PydanticOutputParser
 from dotenv import load_dotenv
-
+import json
 from FullPolicyAnalysis import FullPolicyAnalysis
 from postprocess import (
     normalize_coverages,
@@ -32,48 +32,82 @@ prompt = PromptTemplate(
     template="""
 You are an information extraction AI.
 
-Your task is to READ the policy text and RETURN ONE JSON OBJECT
-that is an INSTANCE of the following model:
-
-FullPolicyAnalysis
+Read the policy text and RETURN ONE JSON OBJECT
+that matches EXACTLY this example structure.
 
 IMPORTANT:
-- Do NOT describe schemas, classes, or field definitions
-- Do NOT include keys like "required", "items", "type"
-- Do NOT output multiple objects
-- Do NOT name classes like "PolicySummary" at the top level
-- ONLY return populated data fields
-
-The top-level JSON MUST have these keys ONLY:
-- summary
-- coverages
-- eligibility
-- claim_procedures
-- obligations
-- contact_information
-- other_sections
-
-{format_instructions}
-
-RULES:
-- If information is missing, use null
+- Use the SAME keys as the example
+- Do NOT explain anything
+- Do NOT include schema definitions
+- Do NOT include extra keys
+- Use null if information is missing
 - Dates must be YYYY-MM-DD
-- Output MUST be a single valid JSON object
-- No explanations, no markdown
 
-Policy Text:
+EXAMPLE OUTPUT (FORMAT ONLY — values will differ):
+
+{
+  "summary": {
+    "policy_name": "Example Policy",
+    "policy_type": "Health Insurance",
+    "policy_id": "ABC-123",
+    "effective_date": "2024-01-01",
+    "expiration_date": "2025-01-01",
+    "issuing_entity": "Example Insurance Co.",
+    "summary": "Short summary text",
+    "last_updated": null,
+    "source_url": null,
+    "key_definitions": null,
+    "table_of_contents": null
+  },
+  "coverages": [
+    {
+      "section_name": "Coverage Section",
+      "coverages": [
+        {
+          "name": "Coverage name",
+          "description": "Coverage description",
+          "limits": null,
+          "deductible": null,
+          "conditions": null,
+          "exclusions": null
+        }
+      ]
+    }
+  ],
+  "eligibility": {
+    "section_name": "Eligibility",
+    "criteria": [
+      {
+        "criterion": "Condition",
+        "details": "Details",
+        "is_required": true
+      }
+    ],
+    "notes": null
+  },
+  "claim_procedures": null,
+  "obligations": null,
+  "contact_information": null,
+  "other_sections": null
+}
+
+NOW PRODUCE REAL DATA FOR THIS POLICY:
+
 ---
 {document}
 ---
 """,
-    input_variables=["document"],
-    partial_variables={
-        "format_instructions": parser.get_format_instructions()
-    }
+    input_variables=["document"]
 )
 
 
-chain = prompt | model | parser
+chain = prompt | model
+raw = chain.invoke({"document": document}).content
+
+
+data = json.loads(raw)
+result = FullPolicyAnalysis.model_validate(data)
+
 
 if st.button("Analyze Policy"):
     if not document.strip():
