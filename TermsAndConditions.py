@@ -10,4 +10,8 @@ class Clause(BaseModel):
     keywords: Optional[List[str]] = Field(None, description="Key terms or concepts within the clause.")
 
 class TermsAndConditionsSection(BaseModel):
-    clauses: Optional[List[str]] = None
+    """
+    General terms and conditions.
+    """
+    section_name: str = Field("Terms and Conditions", description="Name of the section.")
+    clauses: List[Clause] = Field(..., description="List of individual terms and conditions clauses.")
