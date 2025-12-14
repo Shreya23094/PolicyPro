@@ -9,7 +9,7 @@ class PolicySummary(BaseModel):
     effective_date: Optional[date] = None
     expiration_date: Optional[date] = None
     issuing_entity: Optional[str] = None
-    summary: str = Field(..., description="High-level policy summary.")
+    summary: str
     last_updated: Optional[date] = None
     source_url: Optional[HttpUrl] = None
     key_definitions: Optional[Dict[str, str]] = None

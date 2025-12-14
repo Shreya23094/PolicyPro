@@ -11,9 +11,8 @@ class CoverageDetail(BaseModel):
     conditions: Optional[List[str]] = None
     exclusions: Optional[List[str]] = None
 
+
 class CoverageSection(BaseModel):
-    section_name: str = Field(..., description="Coverage section name.")
-    coverages: Optional[List[Union[CoverageDetail, str]]] = Field(
-        None,
-        description="Coverage details as structured objects or plain text."
-    )
+    section_name: str
+    coverages: Optional[List[Union[CoverageDetail, str]]] = None
+
