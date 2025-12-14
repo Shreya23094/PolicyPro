@@ -9,8 +9,5 @@ class Obligation(BaseModel):
     consequence_of_non_compliance: Optional[str] = Field(None, description="What happens if this obligation is not met.")
 
 class ObligationsSection(BaseModel):
-    """
-    Policyholder obligations and responsibilities.
-    """
-    section_name: str = Field("Obligations and Responsibilities", description="Name of the section.")
-    obligations: List[Obligation] = Field(..., description="List of policyholder obligations.")
+    section_name: str = "Obligations and Responsibilities"
+    obligations: Optional[List[Obligation]] = None

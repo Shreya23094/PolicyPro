@@ -2,12 +2,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 class EligibilityCriterion(BaseModel):
-    """
-    A single criterion for eligibility.
-    """
-    criterion: str = Field(..., description="The specific condition or requirement for eligibility (e.g., 'Age', 'Residency', 'Vehicle Type').")
-    details: str = Field(..., description="Detailed explanation of the criterion.")
-    is_required: bool = Field(..., description="True if this criterion is mandatory, False if optional.")
+    criterion: Optional[str] = None
+    details: Optional[str] = None
+    is_required: Optional[bool] = None
 
 class EligibilitySection(BaseModel):
     """

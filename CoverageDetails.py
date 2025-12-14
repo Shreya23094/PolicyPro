@@ -13,8 +13,5 @@ class CoverageDetail(BaseModel):
     exclusions: Optional[List[str]] = Field(None, description="Specific scenarios or items explicitly not covered by this benefit.")
 
 class CoverageSection(BaseModel):
-    """
-    A collection of coverage details.
-    """
-    section_name: str = Field(..., description="Name of the coverage section (e.g., 'Medical Benefits', 'Vehicle Damage', 'Data Usage').")
-    coverages: List[CoverageDetail] = Field(..., description="List of individual coverage details within this section.")
+    section_name: str
+    coverages: Optional[List[CoverageDetail]] = None
