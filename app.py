@@ -21,6 +21,7 @@ st.markdown("For more details, the reference implementation is available on :[Gi
 options = ['-- Select an option --', 'Upload a File', 'Type in the content']
 document_content = ""
 
+
 content_type = st.selectbox("Choose how you'd like to provide the content:", options)
 if content_type == 'Upload a File':
     document = st.file_uploader("Upload the policy document (PDF or TXT).", type=['pdf', 'txt'])
