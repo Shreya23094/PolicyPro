@@ -6,7 +6,6 @@ from FullPolicyAnalysis import FullPolicyAnalysis
 import streamlit as st
 from dotenv import load_dotenv
 import PyPDF2
-import json
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +19,7 @@ st.markdown("For more details, the reference implementation is available on :[Gi
 # File/Content Input
 options = ['-- Select an option --', 'Upload a File', 'Type in the content']
 document_content = ""
+
 
 content_type = st.selectbox("Choose how you'd like to provide the content:", options)
 if content_type == 'Upload a File':
@@ -42,6 +42,7 @@ if content_type == 'Upload a File':
             st.error("Unsupported file format. Please upload a PDF or plain text (.txt) file.")
 elif content_type == 'Type in the content':
     document_content = st.text_area("Enter the policy content to be analyzed:")
+    
 else:
     st.info("ℹ️ Please select an input type to continue.")
 
@@ -58,59 +59,108 @@ parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
 # Prompt Template
 template = PromptTemplate(
     template="""
-You are a meticulous policy analysis AI.
-Read the full document and extract structured information in JSON format using this structure:
+You are an insurance policy analysis AI.
+Extract information STRICTLY according to the schema below.
 
-Fields to extract:
-- summary: a high-level overview of the policy
-- coverages: list of coverage details
-- eligibility: who is eligible for the policy
-- claim_procedures: steps to file a claim
-- obligations: responsibilities of the policyholder
-- terms_and_conditions: key clauses of the policy
-- contact_information: how to contact the issuer
-- other_sections: any extra section not categorized
+{format_instructions}
 
-Rules:
-- If a field is missing in the document, set it to null or an empty list.
-- Do NOT fabricate data.
-- Dates must be in YYYY-MM-DD format.
-- Output should be valid, raw JSON. No markdown or triple backticks.
+STRICT FIELD REQUIREMENTS:
+
+summary (PolicySummary object):
+- summary: string (overall overview of the policy)
+- policy_name: string
+- policy_number: string
+- issuer: string
+- effective_date: YYYY-MM-DD or null
+- expiry_date: YYYY-MM-DD or null
+
+coverages (list of CoverageSection):
+Each CoverageSection MUST contain:
+- section_name: string
+- coverages: list of strings
+
+eligibility (EligibilitySection):
+- criteria: list of objects
+  Each criterion object MUST contain:
+  - condition: string
+
+claim_procedures (list of ClaimProcedure):
+Each ClaimProcedure MUST contain:
+- procedure_name: string
+- steps: list of strings
+
+obligations (ObligationsSection):
+- responsibilities: list of strings
+
+terms_and_conditions (TermsAndConditionsSection):
+- clauses: list of strings
+
+contact_information (ContactsSection):
+- company_name: string
+- phone: string or null
+- email: string or null
+- website: string or null
+
+other_sections:
+- key-value pairs of section_title: section_text
+
+RULES:
+- Do NOT invent information
+- Use null or empty lists if data is missing
+- Output MUST exactly match the schema
+- No extra fields
+- No explanations
 
 Policy Document:
 ---
 {document_content}
 ---
-
-Respond ONLY with valid JSON.
 """,
-    input_variables=["document_content"]
+    input_variables=["document_content"],
+    partial_variables={
+        "format_instructions": parser.get_format_instructions()
+    }
 )
 
-chain = template | model
 
-if st.button('Generate Summary'):
-    if content_type == '-- Select an option --' or not document_content.strip():
-        st.warning("Please complete all required fields before generating the summary.")
+
+chain = template | model | parser
+
+if st.button("Generate Summary"):
+    if content_type == "-- Select an option --" or not document_content.strip():
+        st.warning("Please provide policy content.")
     else:
         with st.spinner("Analyzing policy document..."):
             try:
-                raw_output = chain.invoke({"document_content": document_content})
-                llm_output = raw_output.content.strip()
+                result: FullPolicyAnalysis = chain.invoke(
+                    {"document_content": document_content}
+                )
 
-                # Clean triple backticks or markdown if present
-                cleaned_output = llm_output.strip().removeprefix("```json").removesuffix("```").strip()
+                st.subheader("📤 Structured Output")
 
-                # Try parsing the cleaned output
-                parsed_output = json.loads(cleaned_output)
+                st.markdown("### 🔹 Summary")
+                st.write(result.summary)
 
-                st.subheader("📤 Structured Output (Table View)")
-                for key, value in parsed_output.items():        
-                    st.markdown(f"### 🔹 {key}")
-                    st.write(value)
+                st.markdown("### 🔹 Coverages")
+                st.write(result.coverages)
 
-            except json.JSONDecodeError as e:
-                st.error(f"❌ Invalid JSON returned by the model: {str(e)}")
+                st.markdown("### 🔹 Eligibility")
+                st.write(result.eligibility)
+
+                st.markdown("### 🔹 Claim Procedures")
+                st.write(result.claim_procedures)
+
+                st.markdown("### 🔹 Obligations")
+                st.write(result.obligations)
+
+                st.markdown("### 🔹 Terms and Conditions")
+                st.write(result.terms_and_conditions)
+
+                st.markdown("### 🔹 Contact Information")
+                st.write(result.contact_information)
+
+                st.markdown("### 🔹 Other Sections")
+                st.write(result.other_sections)
 
             except Exception as e:
-                st.error(f"⚠️ Unexpected Error: {str(e)}")
+                st.error(f"❌ Analysis failed: {e}")
