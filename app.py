@@ -30,14 +30,36 @@ parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
 
 prompt = PromptTemplate(
     template="""
-Extract structured information from the policy text below.
+You are an information extraction AI.
+
+Your task is to READ the policy text and RETURN ONE JSON OBJECT
+that is an INSTANCE of the following model:
+
+FullPolicyAnalysis
+
+IMPORTANT:
+- Do NOT describe schemas, classes, or field definitions
+- Do NOT include keys like "required", "items", "type"
+- Do NOT output multiple objects
+- Do NOT name classes like "PolicySummary" at the top level
+- ONLY return populated data fields
+
+The top-level JSON MUST have these keys ONLY:
+- summary
+- coverages
+- eligibility
+- claim_procedures
+- obligations
+- contact_information
+- other_sections
 
 {format_instructions}
 
-Rules:
-- Do NOT invent information
-- Use null when data is missing
+RULES:
+- If information is missing, use null
 - Dates must be YYYY-MM-DD
+- Output MUST be a single valid JSON object
+- No explanations, no markdown
 
 Policy Text:
 ---
@@ -45,8 +67,11 @@ Policy Text:
 ---
 """,
     input_variables=["document"],
-    partial_variables={"format_instructions": parser.get_format_instructions()}
+    partial_variables={
+        "format_instructions": parser.get_format_instructions()
+    }
 )
+
 
 chain = prompt | model | parser
 
