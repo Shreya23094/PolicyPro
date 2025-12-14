@@ -6,7 +6,6 @@ from FullPolicyAnalysis import FullPolicyAnalysis
 import streamlit as st
 from dotenv import load_dotenv
 import PyPDF2
-import json
 
 # Load environment variables
 load_dotenv()
@@ -86,10 +85,13 @@ Policy Document:
 
 Respond ONLY with valid JSON.
 """,
-    input_variables=["document_content"]
+    input_variables=["document_content"],
+    partial_variables={
+        "format_instructions": parser.get_format_instructions()
+    }
 )
 
-chain = template | model
+chain = template | model | parser
 
 if st.button('Generate Summary'):
     if content_type == '-- Select an option --' or not document_content.strip():
@@ -97,22 +99,14 @@ if st.button('Generate Summary'):
     else:
         with st.spinner("Analyzing policy document..."):
             try:
-                raw_output = chain.invoke({"document_content": document_content})
-                llm_output = raw_output.content.strip()
-
-                # Clean triple backticks or markdown if present
-                cleaned_output = llm_output.strip().removeprefix("```json").removesuffix("```").strip()
-
-                # Try parsing the cleaned output
-                parsed_output = json.loads(cleaned_output)
+                parsed_output = chain.invoke(
+                    {"document_content": document_content}
+                )
 
                 st.subheader("📤 Structured Output (Table View)")
-                for key, value in parsed_output.items():        
+                for key, value in parsed_output.dict().items():
                     st.markdown(f"### 🔹 {key}")
                     st.write(value)
 
-            except json.JSONDecodeError as e:
-                st.error(f"❌ Invalid JSON returned by the model: {str(e)}")
-
             except Exception as e:
-                st.error(f"⚠️ Unexpected Error: {str(e)}")
+                st.error(f"⚠️ Failed to analyze document: {str(e)}")
