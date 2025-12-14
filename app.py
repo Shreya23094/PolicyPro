@@ -1,149 +1,116 @@
-import streamlit as st
 from langchain_core.prompts import PromptTemplate
-from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.output_parsers import PydanticOutputParser
-from dotenv import load_dotenv
-import json
+from pydantic import BaseModel, Field
 from FullPolicyAnalysis import FullPolicyAnalysis
-from postprocess import (
-    normalize_coverages,
-    normalize_claims,
-    normalize_obligations
-)
+import streamlit as st
+from langchain.output_parsers.json import parse_json_markdown
+from dotenv import load_dotenv
+import PyPDF2
+import json
 
+# Load environment variables
 load_dotenv()
 
-st.set_page_config("PolicyPro", layout="centered")
+# Streamlit UI
+st.set_page_config(page_title="PolicyPro", layout="centered")
 st.header("📄 PolicyPro")
-st.caption("Structured insurance policy analysis using LLMs")
+st.markdown("Extract structured information from insurance policies accurately and efficiently.")
 
-document = st.text_area("Paste policy text here")
+# File/Content Input
+options = ['-- Select an option --', 'Upload a File', 'Type in the content']
+document_content = ""
 
-# LLM
+content_type = st.selectbox("Choose how you'd like to provide the content:", options)
+if content_type == 'Upload a File':
+    document = st.file_uploader("Upload the policy document (PDF or TXT).", type=['pdf', 'txt'])
+    if document is not None:
+        if document.type == "application/pdf":
+            try:
+                pdf_reader = PyPDF2.PdfReader(document)
+                document_content = ""
+                for page in pdf_reader.pages:
+                    document_content += page.extract_text() + "\n"
+            except Exception as e:
+                st.error(f"❌ Failed to read PDF: {e}")
+        elif document.type == "text/plain":
+            try:
+                document_content = document.read().decode('utf-8')
+            except Exception as e:
+                st.error(f"❌ Failed to decode text file: {e}")
+        else:
+            st.error("Unsupported file format. Please upload a PDF or plain text (.txt) file.")
+elif content_type == 'Type in the content':
+    document_content = st.text_area("Enter the policy content to be analyzed:")
+else:
+    st.info("ℹ️ Please select an input type to continue.")
+
+# Initialize LLM
 llm = HuggingFaceEndpoint(
     repo_id="google/gemma-2-2b-it",
     task="text-generation"
 )
 model = ChatHuggingFace(llm=llm)
 
+# Pydantic Output Parser
 parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
 
-prompt = PromptTemplate(
+# Prompt Template
+template = PromptTemplate(
     template="""
-You are an information extraction AI.
+You are a meticulous policy analysis AI.
+Read the full document and extract structured information in JSON format using this structure:
 
-Read the policy text and RETURN ONE JSON OBJECT
-that matches EXACTLY this example structure.
+Fields to extract:
+- summary: a high-level overview of the policy
+- coverages: list of coverage details
+- eligibility: who is eligible for the policy
+- claim_procedures: steps to file a claim
+- obligations: responsibilities of the policyholder
+- terms_and_conditions: key clauses of the policy
+- contact_information: how to contact the issuer
+- other_sections: any extra section not categorized
 
-IMPORTANT:
-- Use the SAME keys as the example
-- Do NOT explain anything
-- Do NOT include schema definitions
-- Do NOT include extra keys
-- Use null if information is missing
-- Dates must be YYYY-MM-DD
+Rules:
+- If a field is missing in the document, set it to null or an empty list.
+- Do NOT fabricate data.
+- Dates must be in YYYY-MM-DD format.
+- Output should be valid, raw JSON. No markdown or triple backticks.
 
-EXAMPLE OUTPUT (FORMAT ONLY — values will differ):
-
-{
-  "summary": {
-    "policy_name": "Example Policy",
-    "policy_type": "Health Insurance",
-    "policy_id": "ABC-123",
-    "effective_date": "2024-01-01",
-    "expiration_date": "2025-01-01",
-    "issuing_entity": "Example Insurance Co.",
-    "summary": "Short summary text",
-    "last_updated": null,
-    "source_url": null,
-    "key_definitions": null,
-    "table_of_contents": null
-  },
-  "coverages": [
-    {
-      "section_name": "Coverage Section",
-      "coverages": [
-        {
-          "name": "Coverage name",
-          "description": "Coverage description",
-          "limits": null,
-          "deductible": null,
-          "conditions": null,
-          "exclusions": null
-        }
-      ]
-    }
-  ],
-  "eligibility": {
-    "section_name": "Eligibility",
-    "criteria": [
-      {
-        "criterion": "Condition",
-        "details": "Details",
-        "is_required": true
-      }
-    ],
-    "notes": null
-  },
-  "claim_procedures": null,
-  "obligations": null,
-  "contact_information": null,
-  "other_sections": null
-}
-
-NOW PRODUCE REAL DATA FOR THIS POLICY:
-
+Policy Document:
 ---
-{document}
+{document_content}
 ---
+
+Respond ONLY with valid JSON.
 """,
-    input_variables=["document"]
+    input_variables=["document_content"]
 )
 
+chain = template | model
 
-chain = prompt | model
-raw = chain.invoke({"document": document}).content
-
-
-data = json.loads(raw)
-result = FullPolicyAnalysis.model_validate(data)
-
-
-if st.button("Analyze Policy"):
-    if not document.strip():
-        st.warning("Please paste a policy document.")
+if st.button('Generate Summary'):
+    if content_type == '-- Select an option --' or not document_content.strip():
+        st.warning("Please complete all required fields before generating the summary.")
     else:
-        with st.spinner("Analyzing..."):
+        with st.spinner("Analyzing policy document..."):
             try:
-                result = chain.invoke({"document": document})
+                raw_output = chain.invoke({"document_content": document_content})
+                llm_output = raw_output.content.strip()
 
-                # Post-process
-                result.coverages = normalize_coverages(result.coverages)
-                result.claim_procedures = normalize_claims(result.claim_procedures)
-                result.obligations = normalize_obligations(result.obligations)
+                # Clean triple backticks or markdown if present
+                cleaned_output = llm_output.strip().removeprefix("```json").removesuffix("```").strip()
 
-                # -------- DISPLAY --------
-                st.subheader("📌 Summary")
-                st.write(result.summary.summary)
+                # Try parsing the cleaned output
+                parsed_output = json.loads(cleaned_output)
 
-                st.subheader("📦 Coverages")
-                for sec in result.coverages or []:
-                    st.markdown(f"**{sec.section_name}**")
-                    for c in sec.coverages or []:
-                        st.write("•", c.description)
+                st.subheader("📤 Structured Output (Table View)")
+                for key, value in parsed_output.items():        
+                    st.markdown(f"### 🔹 {key}")
+                    st.write(value)
 
-                st.subheader("📋 Eligibility")
-                if result.eligibility and result.eligibility.criteria:
-                    for e in result.eligibility.criteria:
-                        st.write("•", e.details or e.criterion)
-
-                st.subheader("📝 Claim Procedures")
-                for p in result.claim_procedures or []:
-                    st.markdown(f"**{p.procedure_name}**")
-                    for s in p.steps or []:
-                        st.write(f"{s.step_number}. {s.description}")
-
-                st.success("Analysis completed successfully ✅")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ Invalid JSON returned by the model: {str(e)}")
 
             except Exception as e:
-                st.error(f"Failed to analyze document: {e}")
+                st.error(f"⚠️ Unexpected Error: {str(e)}")
