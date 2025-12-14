@@ -16,6 +16,7 @@ load_dotenv()
 st.set_page_config(page_title="PolicyPro", layout="centered")
 st.header("📄 PolicyPro")
 st.markdown("Extract structured information from insurance policies accurately and efficiently.")
+st.markdown("For more details, the reference implementation is available on :[GitHub](https://github.com/Shreya23094/PolicyPro)")
 
 # File/Content Input
 options = ['-- Select an option --', 'Upload a File', 'Type in the content']
