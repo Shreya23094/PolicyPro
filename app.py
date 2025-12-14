@@ -85,17 +85,45 @@ EXAMPLE OUTPUT FORMAT (values are examples only):
         "expiration_date": "2025-01-01",
         "issuing_entity": "Example Insurance Co.",
         "summary": "Short summary text",
-        "last_updated": null,
-        "source_url": null,
-        "key_definitions": null,
-        "table_of_contents": null
+
+        "section_name": "Terms and Conditions",
+        "clauses": [
+            {{
+                "clause_title": "Waiting Period",
+                "clause_description": "A waiting period of 30 days applies to all illnesses except accidents."
+            }},
+            {{
+                "clause_title": "Pre-existing Diseases",
+                "clause_description": "Covered after a waiting period of 24 months."
+            }}
+        ],
+
+        "obligation_name": "Obligations and Responsibilities",
+        "obligations": [
+            {{
+                "description": "Pay premiums on or before the due date",
+                "consequence_of_non_compliance": "Policy may lapse"
+            }},
+            {{
+                "description": "Disclose pre-existing conditions truthfully",
+                "consequence_of_non_compliance": "Claim rejection"
+            }}
+        ],
+
+        "contacts": [
+            {{
+                "department": "Customer Support",
+                "phone": "1800-000-000",
+                "email": "support@exampleinsurance.com",
+                "address": "Example City, India",
+                "website": "https://www.exampleinsurance.com",
+                "hours_of_operation": "24x7"
+            }}
+        ]
     }},
     "coverages": null,
     "eligibility": null,
-    "claim_procedures": null,
-    "obligations": null,
-    "contact_information": null,
-    "other_sections": null
+    "claim_procedures": null
 }}
 
 NOW PRODUCE REAL DATA FOR THIS POLICY:
