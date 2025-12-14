@@ -42,6 +42,7 @@ if content_type == 'Upload a File':
             st.error("Unsupported file format. Please upload a PDF or plain text (.txt) file.")
 elif content_type == 'Type in the content':
     document_content = st.text_area("Enter the policy content to be analyzed:")
+    st.markdown("NOTE: Do upload the content of the policy document in JSON format.")
 else:
     st.info("ℹ️ Please select an input type to continue.")
 
