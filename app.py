@@ -59,31 +59,61 @@ parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
 # Prompt Template
 template = PromptTemplate(
     template="""
-You are a meticulous policy analysis AI.
-Read the full document and extract structured information in JSON format using this structure:
+You are a professional insurance policy analysis AI.
 
-Fields to extract:
-- summary: a high-level overview of the policy
-- coverages: list of coverage details
-- eligibility: who is eligible for the policy
-- claim_procedures: steps to file a claim
-- obligations: responsibilities of the policyholder
-- terms_and_conditions: key clauses of the policy
-- contact_information: how to contact the issuer
-- other_sections: any extra section not categorized
+Extract structured information from the policy document below.
+You MUST strictly follow the schema instructions.
 
-Rules:
-- If a field is missing in the document, set it to null or an empty list.
-- Do NOT fabricate data.
-- Dates must be in YYYY-MM-DD format.
-- Output should be valid, raw JSON. No markdown or triple backticks.
+{format_instructions}
+
+SECTION REQUIREMENTS (VERY IMPORTANT):
+
+summary (object):
+- policy_name: string
+- policy_number: string
+- issuer: string
+- effective_date: YYYY-MM-DD or null
+- expiry_date: YYYY-MM-DD or null
+- overview: string
+
+coverages (list of objects):
+Each item must include:
+- title: string
+- description: string
+
+eligibility (object):
+- criteria: list of strings
+
+claim_procedures (list of objects):
+Each item must include:
+- step_number: integer
+- description: string
+
+obligations (object):
+- responsibilities: list of strings
+
+terms_and_conditions (object):
+- clauses: list of strings
+
+contact_information (object):
+- company_name: string
+- phone: string or null
+- email: string or null
+- website: string or null
+
+other_sections (object):
+- key-value pairs where key is section title and value is section text
+
+RULES:
+- Do NOT invent information
+- If data is missing, use null or empty lists
+- Dates MUST be YYYY-MM-DD
+- Output must EXACTLY match the schema
 
 Policy Document:
 ---
 {document_content}
 ---
-
-Respond ONLY with valid JSON.
 """,
     input_variables=["document_content"],
     partial_variables={
@@ -91,22 +121,44 @@ Respond ONLY with valid JSON.
     }
 )
 
+
 chain = template | model | parser
 
-if st.button('Generate Summary'):
-    if content_type == '-- Select an option --' or not document_content.strip():
-        st.warning("Please complete all required fields before generating the summary.")
+if st.button("Generate Summary"):
+    if content_type == "-- Select an option --" or not document_content.strip():
+        st.warning("Please provide policy content.")
     else:
         with st.spinner("Analyzing policy document..."):
             try:
-                parsed_output = chain.invoke(
+                result: FullPolicyAnalysis = chain.invoke(
                     {"document_content": document_content}
                 )
 
-                st.subheader("📤 Structured Output (Table View)")
-                for key, value in parsed_output.dict().items():
-                    st.markdown(f"### 🔹 {key}")
-                    st.write(value)
+                st.subheader("📤 Structured Output")
+
+                st.markdown("### 🔹 Summary")
+                st.write(result.summary)
+
+                st.markdown("### 🔹 Coverages")
+                st.write(result.coverages)
+
+                st.markdown("### 🔹 Eligibility")
+                st.write(result.eligibility)
+
+                st.markdown("### 🔹 Claim Procedures")
+                st.write(result.claim_procedures)
+
+                st.markdown("### 🔹 Obligations")
+                st.write(result.obligations)
+
+                st.markdown("### 🔹 Terms and Conditions")
+                st.write(result.terms_and_conditions)
+
+                st.markdown("### 🔹 Contact Information")
+                st.write(result.contact_information)
+
+                st.markdown("### 🔹 Other Sections")
+                st.write(result.other_sections)
 
             except Exception as e:
-                st.error(f"⚠️ Failed to analyze document: {str(e)}")
+                st.error(f"❌ Analysis failed: {e}")
