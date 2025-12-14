@@ -59,56 +59,57 @@ parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
 # Prompt Template
 template = PromptTemplate(
     template="""
-You are a professional insurance policy analysis AI.
-
-Extract structured information from the policy document below.
-You MUST strictly follow the schema instructions.
+You are an insurance policy analysis AI.
+Extract information STRICTLY according to the schema below.
 
 {format_instructions}
 
-SECTION REQUIREMENTS (VERY IMPORTANT):
+STRICT FIELD REQUIREMENTS:
 
-summary (object):
+summary (PolicySummary object):
+- summary: string (overall overview of the policy)
 - policy_name: string
 - policy_number: string
 - issuer: string
 - effective_date: YYYY-MM-DD or null
 - expiry_date: YYYY-MM-DD or null
-- overview: string
 
-coverages (list of objects):
-Each item must include:
-- title: string
-- description: string
+coverages (list of CoverageSection):
+Each CoverageSection MUST contain:
+- section_name: string
+- coverages: list of strings
 
-eligibility (object):
-- criteria: list of strings
+eligibility (EligibilitySection):
+- criteria: list of objects
+  Each criterion object MUST contain:
+  - condition: string
 
-claim_procedures (list of objects):
-Each item must include:
-- step_number: integer
-- description: string
+claim_procedures (list of ClaimProcedure):
+Each ClaimProcedure MUST contain:
+- procedure_name: string
+- steps: list of strings
 
-obligations (object):
+obligations (ObligationsSection):
 - responsibilities: list of strings
 
-terms_and_conditions (object):
+terms_and_conditions (TermsAndConditionsSection):
 - clauses: list of strings
 
-contact_information (object):
+contact_information (ContactsSection):
 - company_name: string
 - phone: string or null
 - email: string or null
 - website: string or null
 
-other_sections (object):
-- key-value pairs where key is section title and value is section text
+other_sections:
+- key-value pairs of section_title: section_text
 
 RULES:
 - Do NOT invent information
-- If data is missing, use null or empty lists
-- Dates MUST be YYYY-MM-DD
-- Output must EXACTLY match the schema
+- Use null or empty lists if data is missing
+- Output MUST exactly match the schema
+- No extra fields
+- No explanations
 
 Policy Document:
 ---
@@ -120,6 +121,7 @@ Policy Document:
         "format_instructions": parser.get_format_instructions()
     }
 )
+
 
 
 chain = template | model | parser
