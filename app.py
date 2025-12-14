@@ -5,7 +5,17 @@ import streamlit as st
 from dotenv import load_dotenv
 import PyPDF2
 import json
+from normalizer import normalize_llm_output
+import re
 
+def clean_llm_json(text: str) -> str:
+    """
+    Fix common LLM JSON issues:
+    - Remove trailing commas
+    """
+    # Remove trailing commas before } or ]
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    return text
 # Load environment variables
 load_dotenv()
 
@@ -66,27 +76,27 @@ IMPORTANT:
 
 EXAMPLE OUTPUT FORMAT (values are examples only):
 
-{
-  "summary": {
-    "policy_name": "Example Policy",
-    "policy_type": "Health Insurance",
-    "policy_id": "ABC-123",
-    "effective_date": "2024-01-01",
-    "expiration_date": "2025-01-01",
-    "issuing_entity": "Example Insurance Co.",
-    "summary": "Short summary text",
-    "last_updated": null,
-    "source_url": null,
-    "key_definitions": null,
-    "table_of_contents": null
-  },
-  "coverages": null,
-  "eligibility": null,
-  "claim_procedures": null,
-  "obligations": null,
-  "contact_information": null,
-  "other_sections": null
-}
+{{
+    "summary": {{
+        "policy_name": "Example Policy",
+        "policy_type": "Health Insurance",
+        "policy_id": "ABC-123",
+        "effective_date": "2024-01-01",
+        "expiration_date": "2025-01-01",
+        "issuing_entity": "Example Insurance Co.",
+        "summary": "Short summary text",
+        "last_updated": null,
+        "source_url": null,
+        "key_definitions": null,
+        "table_of_contents": null
+    }},
+    "coverages": null,
+    "eligibility": null,
+    "claim_procedures": null,
+    "obligations": null,
+    "contact_information": null,
+    "other_sections": null
+}}
 
 NOW PRODUCE REAL DATA FOR THIS POLICY:
 
@@ -111,9 +121,13 @@ if st.button("Generate Summary"):
                 # Remove accidental markdown if present
                 raw_output = raw_output.removeprefix("```json").removesuffix("```").strip()
 
-                data = json.loads(raw_output)
+                cleaned_output = clean_llm_json(raw_output)
+                data = json.loads(cleaned_output)
 
-                # OPTIONAL: validate after generation
+                # 🔧 NORMALIZE SHAPES
+                data = normalize_llm_output(data)
+
+                # ✅ NOW validate safely
                 validated = FullPolicyAnalysis.model_validate(data)
 
                 st.subheader("📤 Structured Output")
