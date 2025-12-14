@@ -1,10 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-from langchain_core.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field
 from FullPolicyAnalysis import FullPolicyAnalysis
 import streamlit as st
-from langchain.output_parsers.json import parse_json_markdown
 from dotenv import load_dotenv
 import PyPDF2
 import json
@@ -12,105 +9,121 @@ import json
 # Load environment variables
 load_dotenv()
 
-# Streamlit UI
+# ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="PolicyPro", layout="centered")
 st.header("📄 PolicyPro")
 st.markdown("Extract structured information from insurance policies accurately and efficiently.")
 
-# File/Content Input
+# ---------------- INPUT ----------------
 options = ['-- Select an option --', 'Upload a File', 'Type in the content']
 document_content = ""
 
 content_type = st.selectbox("Choose how you'd like to provide the content:", options)
+
 if content_type == 'Upload a File':
     document = st.file_uploader("Upload the policy document (PDF or TXT).", type=['pdf', 'txt'])
     if document is not None:
         if document.type == "application/pdf":
             try:
                 pdf_reader = PyPDF2.PdfReader(document)
-                document_content = ""
-                for page in pdf_reader.pages:
-                    document_content += page.extract_text() + "\n"
+                document_content = "\n".join(
+                    page.extract_text() or "" for page in pdf_reader.pages
+                )
             except Exception as e:
                 st.error(f"❌ Failed to read PDF: {e}")
         elif document.type == "text/plain":
-            try:
-                document_content = document.read().decode('utf-8')
-            except Exception as e:
-                st.error(f"❌ Failed to decode text file: {e}")
-        else:
-            st.error("Unsupported file format. Please upload a PDF or plain text (.txt) file.")
+            document_content = document.read().decode("utf-8")
+
 elif content_type == 'Type in the content':
-    document_content = st.text_area("Enter the policy content to be analyzed:")
+    document_content = st.text_area("Enter the policy content to be analyzed:", height=300)
+
 else:
     st.info("ℹ️ Please select an input type to continue.")
 
-# Initialize LLM
+# ---------------- LLM ----------------
 llm = HuggingFaceEndpoint(
     repo_id="google/gemma-2-2b-it",
     task="text-generation"
 )
 model = ChatHuggingFace(llm=llm)
 
-# Pydantic Output Parser
-parser = PydanticOutputParser(pydantic_object=FullPolicyAnalysis)
-
-# Prompt Template
-template = PromptTemplate(
+# ---------------- PROMPT (CRITICAL FIX) ----------------
+prompt = PromptTemplate(
     template="""
-You are a meticulous policy analysis AI.
-Read the full document and extract structured information in JSON format using this structure:
+You are an information extraction AI.
 
-Fields to extract:
-- summary: a high-level overview of the policy
-- coverages: list of coverage details
-- eligibility: who is eligible for the policy
-- claim_procedures: steps to file a claim
-- obligations: responsibilities of the policyholder
-- terms_and_conditions: key clauses of the policy
-- contact_information: how to contact the issuer
-- other_sections: any extra section not categorized
+Read the policy text and RETURN ONE JSON OBJECT
+that matches EXACTLY the structure shown below.
 
-Rules:
-- If a field is missing in the document, set it to null or an empty list.
-- Do NOT fabricate data.
-- Dates must be in YYYY-MM-DD format.
-- Output should be valid, raw JSON. No markdown or triple backticks.
+IMPORTANT:
+- Do NOT explain anything
+- Do NOT describe schemas or classes
+- Do NOT include extra keys
+- Use null if information is missing
+- Dates must be YYYY-MM-DD
+- Output ONLY valid JSON (no markdown)
 
-Policy Document:
+EXAMPLE OUTPUT FORMAT (values are examples only):
+
+{
+  "summary": {
+    "policy_name": "Example Policy",
+    "policy_type": "Health Insurance",
+    "policy_id": "ABC-123",
+    "effective_date": "2024-01-01",
+    "expiration_date": "2025-01-01",
+    "issuing_entity": "Example Insurance Co.",
+    "summary": "Short summary text",
+    "last_updated": null,
+    "source_url": null,
+    "key_definitions": null,
+    "table_of_contents": null
+  },
+  "coverages": null,
+  "eligibility": null,
+  "claim_procedures": null,
+  "obligations": null,
+  "contact_information": null,
+  "other_sections": null
+}
+
+NOW PRODUCE REAL DATA FOR THIS POLICY:
+
 ---
-{document_content}
+{document}
 ---
-
-Respond ONLY with valid JSON.
 """,
-    input_variables=["document_content"]
+    input_variables=["document"]
 )
 
-chain = template | model
+chain = prompt | model
 
-if st.button('Generate Summary'):
-    if content_type == '-- Select an option --' or not document_content.strip():
-        st.warning("Please complete all required fields before generating the summary.")
+# ---------------- BUTTON ----------------
+if st.button("Generate Summary"):
+    if not document_content.strip():
+        st.warning("Please provide policy content.")
     else:
         with st.spinner("Analyzing policy document..."):
             try:
-                raw_output = chain.invoke({"document_content": document_content})
-                llm_output = raw_output.content.strip()
+                raw_output = chain.invoke({"document": document_content}).content.strip()
 
-                # Clean triple backticks or markdown if present
-                cleaned_output = llm_output.strip().removeprefix("```json").removesuffix("```").strip()
+                # Remove accidental markdown if present
+                raw_output = raw_output.removeprefix("```json").removesuffix("```").strip()
 
-                # Try parsing the cleaned output
-                parsed_output = json.loads(cleaned_output)
+                data = json.loads(raw_output)
 
-                st.subheader("📤 Structured Output (Table View)")
-                for key, value in parsed_output.items():        
+                # OPTIONAL: validate after generation
+                validated = FullPolicyAnalysis.model_validate(data)
+
+                st.subheader("📤 Structured Output")
+
+                for key, value in validated.model_dump().items():
                     st.markdown(f"### 🔹 {key}")
                     st.write(value)
 
             except json.JSONDecodeError as e:
-                st.error(f"❌ Invalid JSON returned by the model: {str(e)}")
+                st.error("❌ Model did not return valid JSON.")
+                st.code(raw_output)
 
             except Exception as e:
-                st.error(f"⚠️ Unexpected Error: {str(e)}")
+                st.error(f"⚠️ Failed to analyze document: {e}")
