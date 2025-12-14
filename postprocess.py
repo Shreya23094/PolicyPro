@@ -1,9 +1,7 @@
-from models import (
-    CoverageDetail,
-    Step,
-    Obligation,
-    ContactInfo
-)
+from CoverageDetails import CoverageDetail
+from ClaimProceduresInfo import Step
+from ObligationsAndResponsibilities import Obligation
+from ContactInformation import ContactInfo
 
 def normalize_coverages(sections):
     if not sections:

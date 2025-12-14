@@ -4,7 +4,7 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.output_parsers import PydanticOutputParser
 from dotenv import load_dotenv
 
-from models import FullPolicyAnalysis
+from FullPolicyAnalysis import FullPolicyAnalysis
 from postprocess import (
     normalize_coverages,
     normalize_claims,
